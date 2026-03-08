@@ -93,6 +93,22 @@
   font-size: 0.9rem;
 }
 
+/* Word-level highlighting (Apple Music syllable lyrics) */
+.lrc-word {
+  display: inline;
+  transition: color 0.2s ease, text-shadow 0.2s ease;
+  color: inherit;
+}
+
+.lrc-word--lit {
+  color: var(--text-1);
+  text-shadow: 0 0 18px rgba(255,255,255,0.45);
+}
+
+.lrc-word--past {
+  color: rgba(255,255,255,0.65);
+}
+
 /* Unsynced note */
 .lrc-plain-note {
   position: absolute;

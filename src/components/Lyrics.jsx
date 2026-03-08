@@ -1,7 +1,8 @@
 import { useRef, useEffect } from 'react';
+import { getActiveWordIndex } from '../utils/applemusic';
 import './Lyrics.css';
 
-export default function Lyrics({ lines, activeIndex, isSynced }) {
+export default function Lyrics({ lines, activeIndex, isSynced, progressSec }) {
   const containerRef = useRef(null);
   const activeRef    = useRef(null);
 
@@ -39,9 +40,11 @@ export default function Lyrics({ lines, activeIndex, isSynced }) {
 
       <ul className="lrc-list" ref={containerRef}>
         {lines.map((line, i) => {
-          const isActive = i === activeIndex;
-          const isPast   = isSynced && i < activeIndex;
-          const isEmpty  = !line.text;
+          const isActive   = i === activeIndex;
+          const isPast     = isSynced && i < activeIndex;
+          const isEmpty    = !line.text;
+          const hasWords   = isActive && Array.isArray(line.words) && line.words.length > 0;
+          const activeWord = hasWords ? getActiveWordIndex(line.words, progressSec ?? 0) : -1;
 
           return (
             <li
@@ -54,7 +57,24 @@ export default function Lyrics({ lines, activeIndex, isSynced }) {
                 isEmpty  ? 'lrc-line--spacer'  : '',
               ].filter(Boolean).join(' ')}
             >
-              {isEmpty ? '\u00A0' : line.text}
+              {isEmpty
+                ? '\u00A0'
+                : hasWords
+                  ? line.words.map((w, wi) => (
+                      <span
+                        key={wi}
+                        className={
+                          wi < activeWord
+                            ? 'lrc-word lrc-word--past'
+                            : wi === activeWord
+                              ? 'lrc-word lrc-word--lit'
+                              : 'lrc-word'
+                        }
+                      >
+                        {wi < line.words.length - 1 ? `${w.text} ` : w.text}
+                      </span>
+                    ))
+                  : line.text}
             </li>
           );
         })}
