@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { getCurrentlyPlaying, logout } from '../utils/spotify';
 import { fetchLyrics, getActiveLyricIndex } from '../utils/lrclib';
-import { fetchSpotifyLyrics } from '../utils/spotifylyrics';
 import {
   searchAppleMusic,
   fetchAppleMusicLyrics,
@@ -49,7 +48,7 @@ export default function NowPlaying({ onLogout }) {
 
   // ── Provider state ────────────────────────────────────────────
   const [provider, setProvider]   = useState(
-    () => localStorage.getItem('lyrics-provider') || 'lrclib',
+    () => localStorage.getItem('lyrics-provider') || 'apple-music',
   );
   // Apple Music search results & picker
   const [amResults, setAmResults]       = useState([]);
@@ -118,11 +117,8 @@ export default function NowPlaying({ onLogout }) {
         setLyrics(null);
         lyricsRef.current = null;
       }
-    } else if (providerRef.current === 'spotify') {
-      // Spotify lyrics via paxsenix (LRC text by Spotify track ID)
-      commitLyrics(await fetchSpotifyLyrics(item.id));
     } else {
-      // LRCLib (default)
+      // LRCLib
       commitLyrics(await fetchLyrics({
         title:    item.name,
         artist:   primaryArtist,
@@ -344,13 +340,6 @@ export default function NowPlaying({ onLogout }) {
               title="Use LRCLib lyrics"
             >
               LRCLib
-            </button>
-            <button
-              className={`np-provider-btn ${provider === 'spotify' ? 'np-provider-btn--active' : ''}`}
-              onClick={() => handleProviderChange('spotify')}
-              title="Use Spotify lyrics"
-            >
-              Spotify
             </button>
             <button
               className={`np-provider-btn ${provider === 'apple-music' ? 'np-provider-btn--active' : ''}`}
