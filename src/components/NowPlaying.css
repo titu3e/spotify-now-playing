@@ -1,0 +1,388 @@
+.np-root {
+  min-height: 100vh;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: var(--dynamic-bg, #121212);
+  transition: background 2s ease;
+}
+
+.np-bg-blur {
+  position: fixed;
+  inset: -60px;
+  background-size: cover;
+  background-position: center;
+  filter: blur(80px) saturate(1.5);
+  opacity: 0.25;
+  z-index: 0;
+  transition: background-image 1s ease;
+}
+
+.np-overlay {
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.5) 0%,
+    rgba(0, 0, 0, 0.7) 100%
+  );
+  z-index: 0;
+}
+
+/* Header */
+.np-header {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 32px;
+}
+
+.np-header-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--accent);
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.np-spotify-icon {
+  width: 22px;
+  height: 22px;
+}
+
+.np-logout-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--text-secondary);
+  border-radius: 50px;
+  padding: 7px 18px;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.np-logout-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: var(--text-primary);
+}
+
+/* Main content */
+.np-main {
+  position: relative;
+  z-index: 10;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px 32px 40px;
+  gap: 32px;
+}
+
+/* Player section */
+.np-player-section {
+  display: flex;
+  align-items: center;
+  gap: 48px;
+  width: 100%;
+  max-width: 800px;
+  transition: all 0.5s ease;
+}
+
+.np-player-section.compact {
+  gap: 28px;
+  max-width: 600px;
+}
+
+.np-album-art-wrap {
+  flex-shrink: 0;
+}
+
+.np-album-art {
+  width: 280px;
+  height: 280px;
+  border-radius: 16px;
+  object-fit: cover;
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(255, 255, 255, 0.08);
+  transition: transform 0.5s ease, box-shadow 0.5s ease, width 0.3s, height 0.3s;
+}
+
+.np-album-art.playing {
+  box-shadow:
+    0 28px 80px rgba(0, 0, 0, 0.7),
+    0 0 40px rgba(29, 185, 84, 0.15),
+    0 0 0 1px rgba(255, 255, 255, 0.1);
+  transform: scale(1.01);
+}
+
+.np-player-section.compact .np-album-art {
+  width: 160px;
+  height: 160px;
+}
+
+/* Track info */
+.np-track-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.np-track-name {
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: -0.5px;
+}
+
+.np-artist-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.np-album-name {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.4);
+  margin: 0;
+}
+
+/* Progress */
+.np-progress-section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.np-progress-bar {
+  flex: 1;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.np-progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 4px;
+  transition: width 0.9s linear;
+}
+
+.np-time {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  min-width: 36px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Playing animation */
+.np-playing-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--accent);
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+.np-paused-badge {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+.np-bar {
+  display: inline-block;
+  width: 3px;
+  background: var(--accent);
+  border-radius: 2px;
+  animation: bounce 1.2s ease-in-out infinite;
+}
+
+.np-bar:nth-child(1) { height: 10px; animation-delay: 0s; }
+.np-bar:nth-child(2) { height: 14px; animation-delay: 0.2s; }
+.np-bar:nth-child(3) { height: 8px; animation-delay: 0.4s; }
+
+@keyframes bounce {
+  0%, 100% { transform: scaleY(0.5); }
+  50% { transform: scaleY(1.2); }
+}
+
+/* Lyrics section */
+.np-lyrics-section {
+  width: 100%;
+  max-width: 700px;
+}
+
+.np-lyrics-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.np-lyrics-header h2 {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin: 0;
+}
+
+.np-lyrics-toggle {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-secondary);
+  border-radius: 20px;
+  padding: 5px 14px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.np-lyrics-toggle:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: var(--text-primary);
+}
+
+.np-lyrics-container {
+  height: 300px;
+  overflow: hidden;
+  border-radius: 16px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.np-lyrics-peek {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.6);
+  text-align: center;
+  cursor: pointer;
+  padding: 12px 24px;
+  border-radius: 50px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  max-width: 600px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: background 0.2s, color 0.2s;
+}
+
+.np-lyrics-peek:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+}
+
+/* Idle / Error states */
+.np-idle,
+.np-error {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-primary);
+}
+
+.np-idle-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+}
+
+.np-idle-icon {
+  color: rgba(255, 255, 255, 0.15);
+  margin-bottom: 8px;
+}
+
+.np-idle-icon svg {
+  width: 64px;
+  height: 64px;
+}
+
+.np-idle-inner p {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.np-idle-inner span {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.np-error {
+  flex-direction: column;
+  gap: 12px;
+  color: var(--text-secondary);
+}
+
+.np-error button {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--text-primary);
+  border-radius: 50px;
+  padding: 8px 20px;
+  cursor: pointer;
+}
+
+/* Responsive */
+@media (max-width: 700px) {
+  .np-player-section {
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+  }
+
+  .np-album-art {
+    width: 220px;
+    height: 220px;
+  }
+
+  .np-player-section.compact .np-album-art {
+    width: 120px;
+    height: 120px;
+  }
+
+  .np-track-name {
+    font-size: 1.6rem;
+    text-align: center;
+  }
+
+  .np-artist-name,
+  .np-album-name {
+    text-align: center;
+  }
+
+  .np-track-info {
+    align-items: center;
+  }
+
+  .np-main {
+    padding: 16px 16px 32px;
+  }
+
+  .np-header {
+    padding: 16px 20px;
+  }
+}
