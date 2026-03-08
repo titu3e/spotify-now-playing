@@ -40,11 +40,13 @@ export default function Lyrics({ lines, activeIndex, isSynced, progressSec }) {
 
       <ul className="lrc-list" ref={containerRef}>
         {lines.map((line, i) => {
-          const isActive   = i === activeIndex;
-          const isPast     = isSynced && i < activeIndex;
-          const isEmpty    = !line.text;
-          const hasWords   = isActive && Array.isArray(line.words) && line.words.length > 0;
-          const activeWord = hasWords ? getActiveWordIndex(line.words, progressSec ?? 0) : -1;
+          const isActive    = i === activeIndex;
+          const isPast      = isSynced && i < activeIndex;
+          const isEmpty     = !line.text;
+          // Word-level (syllable) line — has per-word timing data
+          const isWordLevel = Array.isArray(line.words) && line.words.length > 0;
+          const hasWords    = isActive && isWordLevel;
+          const activeWord  = hasWords ? getActiveWordIndex(line.words, progressSec ?? 0) : -1;
 
           return (
             <li
@@ -52,7 +54,11 @@ export default function Lyrics({ lines, activeIndex, isSynced, progressSec }) {
               ref={isActive ? activeRef : null}
               className={[
                 'lrc-line',
-                isActive ? 'lrc-line--active'  : '',
+                isActive
+                  ? isWordLevel
+                    ? 'lrc-line--active-word'  // syllable lyrics: no pop-up, words glow instead
+                    : 'lrc-line--active'       // line lyrics: whole-line highlight
+                  : '',
                 isPast   ? 'lrc-line--past'    : '',
                 isEmpty  ? 'lrc-line--music'   : '',
               ].filter(Boolean).join(' ')}
