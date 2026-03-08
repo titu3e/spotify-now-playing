@@ -2,20 +2,24 @@ import { useState, useEffect } from 'react';
 import { isLoggedIn, exchangeCodeForToken } from './utils/spotify';
 import Setup from './components/Setup';
 import NowPlaying from './components/NowPlaying';
+import './App.css';
 
-function App() {
+export default function App() {
   const [loggedIn, setLoggedIn] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function handleAuth() {
+    async function boot() {
       const params = new URLSearchParams(window.location.search);
-      const code = params.get('code');
+      const code  = params.get('code');
       const error = params.get('error');
 
-      if (error) {
-        // User denied access
+      // Always clean OAuth params from the URL immediately
+      if (code || error) {
         window.history.replaceState({}, '', window.location.pathname);
+      }
+
+      if (error) {
         setLoading(false);
         return;
       }
@@ -25,10 +29,8 @@ function App() {
           await exchangeCodeForToken(code);
           setLoggedIn(true);
         } catch (err) {
-          console.error('Token exchange failed:', err);
+          console.error('Spotify token exchange failed:', err);
         }
-        // Clean URL
-        window.history.replaceState({}, '', window.location.pathname);
       } else {
         setLoggedIn(isLoggedIn());
       }
@@ -36,26 +38,18 @@ function App() {
       setLoading(false);
     }
 
-    handleAuth();
+    boot();
   }, []);
-
-  function handleLogout() {
-    setLoggedIn(false);
-  }
 
   if (loading) {
     return (
       <div className="app-loading">
-        <div className="app-loading-spinner" />
+        <div className="spinner" />
       </div>
     );
   }
 
-  return loggedIn ? (
-    <NowPlaying onLogout={handleLogout} />
-  ) : (
-    <Setup />
-  );
+  return loggedIn
+    ? <NowPlaying onLogout={() => setLoggedIn(false)} />
+    : <Setup />;
 }
-
-export default App;

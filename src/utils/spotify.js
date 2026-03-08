@@ -6,11 +6,20 @@ const SPOTIFY_SCOPES = [
 const REDIRECT_URI = window.location.origin + window.location.pathname;
 
 function generateRandomString(length) {
-  const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  const values = crypto.getRandomValues(new Uint8Array(length));
-  return Array.from(values)
-    .map((x) => possible[x % possible.length])
-    .join('');
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  // Use rejection sampling to eliminate modulo bias.
+  // Discard any byte >= floor(256 / alphabet.length) * alphabet.length so that
+  // the remaining values map uniformly onto the alphabet.
+  const maxValid = Math.floor(256 / alphabet.length) * alphabet.length; // 248
+  const result = [];
+  while (result.length < length) {
+    const bytes = crypto.getRandomValues(new Uint8Array((length - result.length) * 2));
+    for (const byte of bytes) {
+      if (result.length >= length) break;
+      if (byte < maxValid) result.push(alphabet[byte % alphabet.length]);
+    }
+  }
+  return result.join('');
 }
 
 async function generateCodeChallenge(verifier) {
