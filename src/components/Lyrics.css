@@ -56,12 +56,20 @@
   will-change: transform, color;
 }
 
-/* Active line */
+/* Active line (line-by-line lyrics) — whole line pops and glows */
 .lrc-line--active {
   color: var(--text-1) !important;
   font-size: 1.55rem;
   transform: translateX(4px);
   background: rgba(255,255,255,0.05);
+  text-shadow: 0 0 24px rgba(255,255,255,0.2);
+}
+
+/* Active line (word/syllable lyrics) — no pop-up; individual words glow instead */
+.lrc-line--active-word {
+  color: rgba(255,255,255,0.5);
+  font-size: 1.35rem;
+  background: transparent;
 }
 
 /* Past lines */
@@ -149,11 +157,13 @@
 }
 
 @media (max-width: 820px) {
-  .lrc-line         { font-size: 1.15rem; }
-  .lrc-line--active { font-size: 1.3rem;  }
+  .lrc-line              { font-size: 1.15rem; }
+  .lrc-line--active      { font-size: 1.3rem;  }
+  .lrc-line--active-word { font-size: 1.15rem; }
 }
 
 @media (max-width: 480px) {
-  .lrc-line         { font-size: 1rem;   }
-  .lrc-line--active { font-size: 1.15rem; }
+  .lrc-line              { font-size: 1rem;    }
+  .lrc-line--active      { font-size: 1.15rem; }
+  .lrc-line--active-word { font-size: 1rem;    }
 }
