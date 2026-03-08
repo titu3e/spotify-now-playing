@@ -19,6 +19,14 @@ function fmt(ms) {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
 
+function getGreeting() {
+  const h = new Date().getHours();
+  if (h >= 5  && h < 12) return 'Good Morning';
+  if (h >= 12 && h < 17) return 'Good Afternoon';
+  if (h >= 17 && h < 21) return 'Good Evening';
+  return 'Good Night';
+}
+
 /** Extract the dominant (darkened) RGB from a small canvas sample of the art. */
 function sampleColor(imgEl) {
   try {
@@ -330,6 +338,8 @@ export default function NowPlaying({ onLogout }) {
           </svg>
           Now Playing
         </span>
+
+        <span className="np-header-greeting">{getGreeting()}</span>
 
         <div className="np-header-actions">
           {/* Provider selector */}
