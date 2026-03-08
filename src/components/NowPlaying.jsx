@@ -1,6 +1,14 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { getCurrentlyPlaying, logout } from '../utils/spotify';
 import { fetchLyrics, getActiveLyricIndex } from '../utils/lrclib';
+import { fetchSpotifyLyrics } from '../utils/spotifylyrics';
+import {
+  searchAppleMusic,
+  fetchAppleMusicLyrics,
+  findBestMatch,
+  resolveArtworkUrl,
+  decodeHtmlEntities,
+} from '../utils/applemusic';
 import Lyrics from './Lyrics';
 import './NowPlaying.css';
 
@@ -39,6 +47,15 @@ export default function NowPlaying({ onLogout }) {
   const [synced, setSynced]       = useState(false);
   const [activeIdx, setActiveIdx] = useState(-1);
 
+  // ── Provider state ────────────────────────────────────────────
+  const [provider, setProvider]   = useState(
+    () => localStorage.getItem('lyrics-provider') || 'lrclib',
+  );
+  // Apple Music search results & picker
+  const [amResults, setAmResults]       = useState([]);
+  const [amPickerOpen, setAmPickerOpen] = useState(false);
+  const [amSelectedId, setAmSelectedId] = useState(null);
+
   // ── UI state ─────────────────────────────────────────────────
   const [accentColor, setAccentColor] = useState('rgb(18,18,18)');
   const [projector, setProjector]     = useState(false);
@@ -51,6 +68,13 @@ export default function NowPlaying({ onLogout }) {
   const lyricsRef    = useRef(null);   // mirror of lyrics state for the ticker
   const tickerRef    = useRef(null);
   const hiddenImgRef = useRef(null);
+  const providerRef  = useRef(provider); // always holds latest provider value
+
+  // Keep providerRef in sync with provider state
+  useEffect(() => {
+    providerRef.current = provider;
+    localStorage.setItem('lyrics-provider', provider);
+  }, [provider]);
 
   // ── Color extraction ─────────────────────────────────────────
   const extractColor = useCallback((url) => {
@@ -63,6 +87,50 @@ export default function NowPlaying({ onLogout }) {
     };
     img.src = url;
   }, []);
+
+  // ── Shared helper: commit a fetched lyrics result to state ───
+  const commitLyrics = useCallback((result) => {
+    const isSynced = Array.isArray(result) && result.every((l) => l.time !== null);
+    setSynced(isSynced);
+    setLyrics(result);
+    lyricsRef.current = result;
+  }, []);
+
+  // ── Fetch lyrics for a track (uses current provider via ref) ─
+  const fetchLyricsForTrack = useCallback(async (item) => {
+    const primaryArtist = item.artists?.[0]?.name ?? '';
+    const albumName     = item.album?.name ?? '';
+    const durationSec   = item.duration_ms != null ? item.duration_ms / 1000 : undefined;
+
+    if (providerRef.current === 'apple-music') {
+      // Search Apple Music
+      const query   = `${primaryArtist} ${item.name}`;
+      const results = await searchAppleMusic(query);
+      setAmResults(results);
+
+      const best = findBestMatch(results, { artist: primaryArtist, title: item.name });
+      if (best) {
+        setAmSelectedId(best.id);
+        commitLyrics(await fetchAppleMusicLyrics(best.id));
+      } else {
+        // No match found — open picker so the user can choose
+        setAmPickerOpen(true);
+        setLyrics(null);
+        lyricsRef.current = null;
+      }
+    } else if (providerRef.current === 'spotify') {
+      // Spotify lyrics via paxsenix (LRC text by Spotify track ID)
+      commitLyrics(await fetchSpotifyLyrics(item.id));
+    } else {
+      // LRCLib (default)
+      commitLyrics(await fetchLyrics({
+        title:    item.name,
+        artist:   primaryArtist,
+        album:    albumName,
+        duration: durationSec,
+      }));
+    }
+  }, [commitLyrics]);
 
   // ── Core poller ───────────────────────────────────────────────
   const poll = useCallback(async () => {
@@ -92,32 +160,20 @@ export default function NowPlaying({ onLogout }) {
       setTrack(item);
       setActiveIdx(-1);
       setLyrics(null);
+      setAmResults([]);
+      setAmSelectedId(null);
+      setAmPickerOpen(false);
       lyricsRef.current = null;
 
       // Extract album-art accent color
       extractColor(item.album?.images?.[0]?.url);
 
-      // Fetch lyrics
-      const primaryArtist = item.artists?.[0]?.name ?? '';
-      const albumName     = item.album?.name ?? '';
-      const durationSec   = item.duration_ms != null ? item.duration_ms / 1000 : undefined;
-
-      const result = await fetchLyrics({
-        title:    item.name,
-        artist:   primaryArtist,
-        album:    albumName,
-        duration: durationSec,
-      });
-
-      const isSynced = Array.isArray(result) && result.every((l) => l.time !== null);
-      setSynced(isSynced);
-      setLyrics(result);
-      lyricsRef.current = result;
+      await fetchLyricsForTrack(item);
     } catch (err) {
       console.error('Spotify poll error:', err);
       setError('Could not reach Spotify. Check your connection and try again.');
     }
-  }, [extractColor]);
+  }, [extractColor, fetchLyricsForTrack]);
 
   // ── Smooth progress ticker (runs every second) ────────────────
   const startTicker = useCallback(() => {
@@ -157,10 +213,50 @@ export default function NowPlaying({ onLogout }) {
     }
   }, [lyrics]);
 
+  // ── Update browser tab title with the current track ──────────
+  useEffect(() => {
+    if (track) {
+      const artist = track.artists?.map((a) => a.name).join(', ') ?? '';
+      document.title = artist ? `${track.name} · ${artist}` : track.name;
+    } else {
+      document.title = 'Now Playing';
+    }
+  }, [track]);
+
   // ── Handlers ─────────────────────────────────────────────────
   function handleLogout() { logout(); onLogout(); }
 
   function retry() { setError(''); poll(); }
+
+  // Switch provider and re-fetch lyrics for the current track
+  async function handleProviderChange(next) {
+    setProvider(next);
+    providerRef.current = next;
+    localStorage.setItem('lyrics-provider', next);
+
+    if (!track) return;
+    setLyrics(null);
+    setAmResults([]);
+    setAmSelectedId(null);
+    setAmPickerOpen(false);
+    lyricsRef.current = null;
+    setActiveIdx(-1);
+    await fetchLyricsForTrack(track);
+  }
+
+  // User picked a specific Apple Music search result
+  async function handleAmResultSelect(result) {
+    setAmSelectedId(result.id);
+    setAmPickerOpen(false);
+    setLyrics(null);
+    lyricsRef.current = null;
+    setActiveIdx(-1);
+    const fetched = await fetchAppleMusicLyrics(result.id);
+    commitLyrics(fetched);
+    if (fetched) {
+      setActiveIdx(getActiveLyricIndex(fetched, progressRef.current / 1000));
+    }
+  }
 
   // ── Render: error ─────────────────────────────────────────────
   if (error) {
@@ -240,6 +336,31 @@ export default function NowPlaying({ onLogout }) {
         </span>
 
         <div className="np-header-actions">
+          {/* Provider selector */}
+          <div className="np-provider-toggle">
+            <button
+              className={`np-provider-btn ${provider === 'lrclib' ? 'np-provider-btn--active' : ''}`}
+              onClick={() => handleProviderChange('lrclib')}
+              title="Use LRCLib lyrics"
+            >
+              LRCLib
+            </button>
+            <button
+              className={`np-provider-btn ${provider === 'spotify' ? 'np-provider-btn--active' : ''}`}
+              onClick={() => handleProviderChange('spotify')}
+              title="Use Spotify lyrics"
+            >
+              Spotify
+            </button>
+            <button
+              className={`np-provider-btn ${provider === 'apple-music' ? 'np-provider-btn--active' : ''}`}
+              onClick={() => handleProviderChange('apple-music')}
+              title="Use Apple Music lyrics"
+            >
+              Apple Music
+            </button>
+          </div>
+
           <button
             className="np-icon-btn"
             onClick={() => setProjector(true)}
@@ -310,6 +431,20 @@ export default function NowPlaying({ onLogout }) {
                 Lyrics
               </button>
             )}
+
+            {/* Apple Music: button to open/re-open result picker */}
+            {provider === 'apple-music' && amResults.length > 0 && (
+              <button
+                className="np-lyrics-toggle"
+                onClick={() => setAmPickerOpen((v) => !v)}
+                title="Choose a different Apple Music match"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" />
+                </svg>
+                Match
+              </button>
+            )}
           </div>
 
           {/* Inline active lyric peek (when lyrics panel is collapsed) */}
@@ -320,12 +455,57 @@ export default function NowPlaying({ onLogout }) {
           )}
         </section>
 
-        {/* ── Right panel: lyrics ────────────────────────────── */}
-        {hasLyrics && lyricsOpen && (
+        {/* ── Right panel: lyrics or AM picker ──────────────── */}
+        {(hasLyrics && lyricsOpen) || amPickerOpen ? (
           <section className="np-lyrics-panel">
-            <Lyrics lines={lyrics} activeIndex={activeIdx} isSynced={synced} />
+            {amPickerOpen ? (
+              /* Apple Music search result picker */
+              <div className="am-picker">
+                <div className="am-picker-header">
+                  <span>Choose the correct match</span>
+                  {hasLyrics && (
+                    <button className="am-picker-close" onClick={() => setAmPickerOpen(false)}>
+                      ✕
+                    </button>
+                  )}
+                </div>
+                {amResults.length === 0 ? (
+                  <p className="am-picker-empty">No results found for this track.</p>
+                ) : (
+                  <ul className="am-picker-list">
+                    {amResults.map((r) => (
+                      <li
+                        key={r.id}
+                        className={`am-picker-item ${amSelectedId === r.id ? 'am-picker-item--selected' : ''}`}
+                        onClick={() => handleAmResultSelect(r)}
+                      >
+                        {r.artwork && (
+                          <img
+                            className="am-picker-art"
+                            src={resolveArtworkUrl(r.artwork, 60)}
+                            alt={r.songName}
+                          />
+                        )}
+                        <div className="am-picker-meta">
+                          <span className="am-picker-title">{r.songName}</span>
+                          <span className="am-picker-artist">{decodeHtmlEntities(r.artistName)}</span>
+                          <span className="am-picker-album">{r.albumName}</span>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            ) : (
+              <Lyrics
+                lines={lyrics}
+                activeIndex={activeIdx}
+                isSynced={synced}
+                progressSec={progress / 1000}
+              />
+            )}
           </section>
-        )}
+        ) : null}
       </main>
     </div>
   );
