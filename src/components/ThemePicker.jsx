@@ -4,7 +4,7 @@ const THEMES = [
   { key: 'dark',   label: 'Dark',          color: '#1a1a1a' },
   { key: 'amoled', label: 'AMOLED',        color: '#000000' },
   { key: 'sepia',  label: 'Sepia',         color: '#1a1208' },
-  { key: 'hc',     label: 'High Contrast', color: '#003322' },
+  { key: 'hc',     label: 'High Contrast', color: '#000000' },
 ];
 
 /**

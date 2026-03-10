@@ -212,7 +212,7 @@ export default function NowPlaying({ onLogout }) {
   useEffect(() => {
     if (track) {
       const artist = track.artists?.map((a) => a.name).join(', ') ?? '';
-      document.title = artist ? `${track.name} \u00b7 ${artist}` : track.name;
+      document.title = artist ? `${track.name} · ${artist}` : track.name;
     } else {
       document.title = 'Now Playing';
     }
@@ -425,8 +425,8 @@ export default function NowPlaying({ onLogout }) {
 
         <div className="np-header-actions">
           {isRateLimited && (
-            <span className="np-rate-limit-badge" title="Spotify API rate limited \u2014 retrying\u2026">
-              \u23f1 Rate limited
+            <span className="np-rate-limit-badge" title="Spotify API rate limited — retrying…">
+              ⏱ Rate limited
             </span>
           )}
 
@@ -614,7 +614,7 @@ export default function NowPlaying({ onLogout }) {
                   <span>Choose the correct match</span>
                   {hasLyrics && (
                     <button className="am-picker-close" onClick={() => setAmPickerOpen(false)}>
-                      \u2715
+                      ✕
                     </button>
                   )}
                 </div>

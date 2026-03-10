@@ -75,7 +75,7 @@ export function useLyrics({ progressRef, setProgress, seekToPositionFn }) {
     }
   }, [commitLyrics]);
 
-  async function handleProviderChange(next) {
+  function handleProviderChange(next) {
     setProvider(next);
     providerRef.current = next;
     localStorage.setItem('lyrics-provider', next);

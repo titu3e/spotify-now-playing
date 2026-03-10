@@ -311,13 +311,12 @@ export function useSpotifyPlayer({ onTrackChange, lyricsRef, setActiveIdx }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Keep polling interval updated when sdkReady changes
+  // Trigger a re-poll when SDK becomes ready (once, on first ready event)
   useEffect(() => {
-    // polling interval management is handled in the main effect above
-    // This just triggers a re-poll when SDK becomes ready
     if (sdkReady) poll();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sdkReady]);
+    // poll is stable (defined with useCallback with only stable deps)
+    // sdkReady changes only once from false->true after SDK connects
+  }, [sdkReady, poll]);
 
   return {
     track,

@@ -56,7 +56,7 @@ export default function Lyrics({ lines, activeIndex, isSynced, progressSec, onSe
               key={i}
               ref={isActive ? activeRef : null}
               role="listitem"
-              aria-current={isActive ? 'true' : undefined}
+              aria-current={isActive ? true : undefined}
               className={[
                 'lrc-line',
                 isActive
