@@ -230,3 +230,30 @@ export async function getQueue() {
   if (!res.ok) return null;
   return res.json(); // { currently_playing, queue: [...] }
 }
+
+export async function togglePlayback(isCurrentlyPlaying) {
+  const token = await getValidToken();
+  if (!token) return;
+  const endpoint = isCurrentlyPlaying
+    ? 'https://api.spotify.com/v1/me/player/pause'
+    : 'https://api.spotify.com/v1/me/player/play';
+  const res = await fetch(endpoint, {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok && res.status !== 204) {
+    console.warn('togglePlayback failed:', res.status);
+  }
+}
+
+export async function toggleShuffle(state) {
+  const token = await getValidToken();
+  if (!token) return;
+  const res = await fetch(`https://api.spotify.com/v1/me/player/shuffle?state=${state}`, {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok && res.status !== 204) {
+    console.warn('toggleShuffle failed:', res.status);
+  }
+}
