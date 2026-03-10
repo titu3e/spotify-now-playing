@@ -274,6 +274,39 @@
 }
 .np-skip-btn:active { transform: scale(0.93); }
 
+/* Shuffle active state */
+.np-skip-btn--active {
+  color: var(--accent);
+  border-color: rgba(29,185,84,0.35);
+  background: rgba(29,185,84,0.1);
+}
+.np-skip-btn--active:hover {
+  background: rgba(29,185,84,0.18);
+  color: var(--accent-bright, #1ed760);
+  border-color: rgba(29,185,84,0.5);
+}
+
+/* Play / Pause button (primary action) */
+.np-play-btn {
+  background: var(--text-1);
+  border: none;
+  border-radius: var(--radius-full);
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #000;
+  transition: background var(--transition), transform var(--transition);
+  flex-shrink: 0;
+}
+.np-play-btn svg { width: 20px; height: 20px; }
+.np-play-btn:hover {
+  background: var(--accent-bright, #1ed760);
+  transform: scale(1.06);
+}
+.np-play-btn:active { transform: scale(0.94); }
+
 /* ── Pill toggles row (Lyrics / Up Next / Match) ── */
 .np-pill-row {
   display: flex;
@@ -505,6 +538,18 @@
 }
 
 /* ── Queue panel ("Up Next") ──────────────────────────────── */
+
+/* Desktop: right sidebar column */
+.np-queue-panel {
+  flex: 0 0 280px;
+  min-width: 0;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
 .np-queue {
   display: flex;
   flex-direction: column;
@@ -779,10 +824,21 @@
     min-height: 320px;
     flex: 0 0 320px;
   }
+  /* Queue panel: compact popup-style block on mobile */
+  .np-queue-panel {
+    width: 100%;
+    flex: 0 0 auto;
+    max-height: 260px;
+    min-height: 140px;
+  }
   /* Larger tap targets on touch screens */
   .np-skip-btn {
     width: 44px;
     height: 44px;
+  }
+  .np-play-btn {
+    width: 54px;
+    height: 54px;
   }
   /* Slightly taller seek bar for easier touch */
   .np-bar-track--seekable { height: 5px; }
@@ -800,4 +856,5 @@
   /* Slightly smaller skip icons on tiny screens */
   .np-skip-btn { width: 42px; height: 42px; }
   .np-skip-btn svg { width: 15px; height: 15px; }
+  .np-play-btn { width: 50px; height: 50px; }
 }

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { getCurrentlyPlaying, logout, skipToNext, skipToPrevious, seekToPosition, getQueue } from '../utils/spotify';
+import { getCurrentlyPlaying, logout, skipToNext, skipToPrevious, seekToPosition, getQueue, togglePlayback, toggleShuffle } from '../utils/spotify';
 import { fetchLyrics, getActiveLyricIndex } from '../utils/lrclib';
 import {
   searchAppleMusic,
@@ -69,11 +69,13 @@ export default function NowPlaying({ onLogout }) {
   const [lyricsOpen, setLyricsOpen]   = useState(true);
   const [queue, setQueue]             = useState([]);
   const [queueOpen, setQueueOpen]     = useState(false);
+  const [shuffle, setShuffle]         = useState(false);
 
   // ── Internal refs (survive re-renders without causing them) ──
   const trackIdRef   = useRef(null);
   const progressRef  = useRef(0);
   const playingRef   = useRef(false);
+  const shuffleRef   = useRef(false);
   const lyricsRef    = useRef(null);   // mirror of lyrics state for the ticker
   const tickerRef    = useRef(null);
   const hiddenImgRef = useRef(null);
@@ -161,6 +163,9 @@ export default function NowPlaying({ onLogout }) {
       playingRef.current  = isPlaying;
       setProgress(data.progress_ms);
       setPlaying(isPlaying);
+      const shuffleState = data.shuffle_state ?? false;
+      shuffleRef.current = shuffleState;
+      setShuffle(shuffleState);
 
       // Update queue on every poll
       if (queueData?.queue) {
@@ -252,6 +257,22 @@ export default function NowPlaying({ onLogout }) {
     setTimeout(poll, 800);
   }
 
+  async function handleTogglePlayback() {
+    const wasPlaying = playingRef.current;
+    // Optimistic update
+    playingRef.current = !wasPlaying;
+    setPlaying(!wasPlaying);
+    await togglePlayback(wasPlaying);
+    setTimeout(poll, 800);
+  }
+
+  async function handleToggleShuffle() {
+    const newState = !shuffleRef.current;
+    shuffleRef.current = newState;
+    setShuffle(newState);
+    await toggleShuffle(newState);
+  }
+
   function handleSeek(e) {
     if (!track?.duration_ms) return;
     const rect = e.currentTarget.getBoundingClientRect();
@@ -338,7 +359,9 @@ export default function NowPlaying({ onLogout }) {
   const album    = track.album?.name ?? '';
   const pct      = track.duration_ms ? Math.min(progress / track.duration_ms, 1) * 100 : 0;
   const hasLyrics = Array.isArray(lyrics) && lyrics.length > 0;
-  const panelOpen = amPickerOpen || (queueOpen && queue.length > 0) || (hasLyrics && lyricsOpen);
+  const lyricsPanelOpen = amPickerOpen || (hasLyrics && lyricsOpen);
+  const queuePanelOpen  = queueOpen && queue.length > 0;
+  const panelOpen = lyricsPanelOpen || queuePanelOpen;
 
   // ── Render: projector mode ────────────────────────────────────
   if (projector) {
@@ -465,8 +488,23 @@ export default function NowPlaying({ onLogout }) {
 
           {/* Playback controls */}
           <div className="np-controls">
-            {/* ── Row 1: prev / status / next ── */}
+            {/* ── Row 1: shuffle / prev / play-pause / next ── */}
             <div className="np-playback-row">
+              <button
+                className={`np-skip-btn${shuffle ? ' np-skip-btn--active' : ''}`}
+                onClick={handleToggleShuffle}
+                title={shuffle ? 'Disable shuffle' : 'Enable shuffle'}
+                aria-label="Toggle shuffle"
+                aria-pressed={shuffle}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="16 3 21 3 21 8" />
+                  <line x1="4" y1="20" x2="21" y2="3" />
+                  <polyline points="21 16 21 21 16 21" />
+                  <line x1="15" y1="15" x2="21" y2="21" />
+                </svg>
+              </button>
+
               <button
                 className="np-skip-btn"
                 onClick={handleSkipPrev}
@@ -478,14 +516,23 @@ export default function NowPlaying({ onLogout }) {
                 </svg>
               </button>
 
-              {playing ? (
-                <div className="np-playing-tag" aria-label="Playing">
-                  <span className="np-eq-bar" /><span className="np-eq-bar" /><span className="np-eq-bar" /><span className="np-eq-bar" />
-                  Playing
-                </div>
-              ) : (
-                <div className="np-paused-tag">Paused</div>
-              )}
+              <button
+                className="np-play-btn"
+                onClick={handleTogglePlayback}
+                title={playing ? 'Pause' : 'Play'}
+                aria-label={playing ? 'Pause' : 'Play'}
+              >
+                {playing ? (
+                  <svg viewBox="0 0 24 24" fill="currentColor">
+                    <rect x="6" y="4" width="4" height="16" rx="1" />
+                    <rect x="14" y="4" width="4" height="16" rx="1" />
+                  </svg>
+                ) : (
+                  <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
+                )}
+              </button>
 
               <button
                 className="np-skip-btn"
@@ -503,8 +550,8 @@ export default function NowPlaying({ onLogout }) {
             <div className="np-pill-row">
               {hasLyrics && (
                 <button
-                  className={`np-lyrics-toggle ${lyricsOpen && !queueOpen ? 'active' : ''}`}
-                  onClick={() => { setLyricsOpen((v) => !v); setQueueOpen(false); }}
+                  className={`np-lyrics-toggle ${lyricsOpen ? 'active' : ''}`}
+                  onClick={() => setLyricsOpen((v) => !v)}
                 >
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M3 6h18M3 12h18M3 18h12" />
@@ -516,7 +563,7 @@ export default function NowPlaying({ onLogout }) {
               {queue.length > 0 && (
                 <button
                   className={`np-lyrics-toggle ${queueOpen ? 'active' : ''}`}
-                  onClick={() => { setQueueOpen((v) => !v); setLyricsOpen(false); }}
+                  onClick={() => setQueueOpen((v) => !v)}
                   title="Up Next queue"
                 >
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -544,15 +591,15 @@ export default function NowPlaying({ onLogout }) {
           </div>
 
           {/* Inline active lyric peek (when lyrics panel is collapsed) */}
-          {hasLyrics && !lyricsOpen && !queueOpen && synced && activeIdx >= 0 && lyrics[activeIdx]?.text && (
-            <p className="np-lyric-peek" onClick={() => { setLyricsOpen(true); setQueueOpen(false); }}>
+          {hasLyrics && !lyricsOpen && synced && activeIdx >= 0 && lyrics[activeIdx]?.text && (
+            <p className="np-lyric-peek" onClick={() => setLyricsOpen(true)}>
               {lyrics[activeIdx].text}
             </p>
           )}
         </section>
 
-        {/* ── Right panel: queue, lyrics, or AM picker ──────── */}
-        {panelOpen ? (
+        {/* ── Center panel: lyrics or AM picker ─────────────── */}
+        {lyricsPanelOpen && (
           <section className="np-lyrics-panel">
             {amPickerOpen ? (
               /* Apple Music search result picker */
@@ -592,33 +639,6 @@ export default function NowPlaying({ onLogout }) {
                   </ul>
                 )}
               </div>
-            ) : queueOpen && queue.length > 0 ? (
-              /* Up Next queue panel */
-              <div className="np-queue">
-                <div className="np-queue-header">
-                  <span>Up Next</span>
-                  <button className="am-picker-close" onClick={() => setQueueOpen(false)}>✕</button>
-                </div>
-                <ul className="np-queue-list">
-                  {queue.map((t, i) => {
-                    const qArt    = t.album?.images?.[1]?.url ?? t.album?.images?.[0]?.url;
-                    const qArtist = t.artists?.map((a) => a.name).join(', ') ?? '';
-                    return (
-                      <li key={`${t.id}-${i}`} className="np-queue-item">
-                        <span className="np-queue-num">{i + 1}</span>
-                        {qArt && (
-                          <img className="np-queue-art" src={qArt} alt={t.name} />
-                        )}
-                        <div className="np-queue-meta">
-                          <span className="np-queue-title">{t.name}</span>
-                          <span className="np-queue-artist">{qArtist}</span>
-                        </div>
-                        <span className="np-queue-dur">{fmt(t.duration_ms)}</span>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
             ) : (
               <Lyrics
                 lines={lyrics}
@@ -629,7 +649,38 @@ export default function NowPlaying({ onLogout }) {
               />
             )}
           </section>
-        ) : null}
+        )}
+
+        {/* ── Right panel: Up Next queue ─────────────────────── */}
+        {queuePanelOpen && (
+          <section className="np-queue-panel">
+            <div className="np-queue">
+              <div className="np-queue-header">
+                <span>Up Next</span>
+                <button className="am-picker-close" onClick={() => setQueueOpen(false)}>✕</button>
+              </div>
+              <ul className="np-queue-list">
+                {queue.map((t, i) => {
+                  const qArt    = t.album?.images?.[1]?.url ?? t.album?.images?.[0]?.url;
+                  const qArtist = t.artists?.map((a) => a.name).join(', ') ?? '';
+                  return (
+                    <li key={`${t.id}-${i}`} className="np-queue-item">
+                      <span className="np-queue-num">{i + 1}</span>
+                      {qArt && (
+                        <img className="np-queue-art" src={qArt} alt={t.name} />
+                      )}
+                      <div className="np-queue-meta">
+                        <span className="np-queue-title">{t.name}</span>
+                        <span className="np-queue-artist">{qArtist}</span>
+                      </div>
+                      <span className="np-queue-dur">{fmt(t.duration_ms)}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          </section>
+        )}
       </main>
     </div>
   );
